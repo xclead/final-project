@@ -17,7 +17,7 @@ export default class ProjectScene extends Phaser.Scene {
 		this.oneWay = undefined
 		this.platforms = undefined
 		this.coin = undefined
-
+		this.coinFollowing = false
 		
 	}
 	preload() {
@@ -31,9 +31,25 @@ export default class ProjectScene extends Phaser.Scene {
 		})
 		this.load.image("spike", "images/spike.png")
 		this.load.image("oneWay", "images/oneway.png")
-		this.load.spritesheet("marbleBlocks", "images/Tilemap/marble_packed.png", {
+		this.load.spritesheet("marble_packed", "images/Tilemap/marble-packed.png", {
 			frameWidth: 18,
 			frameHeight: 18,
+		})
+		this.load.spritesheet('moreMarbleBlocks', 'images/tilemap/more-marble-blocks.png', {
+			frameWidth: 18,
+			frameHeight: 18
+		})
+		this.load.spritesheet('marbleBlocksSpike', 'images/tilemap/marble-packed-spike.png',{
+			frameWidth: 18,
+			frameHeight: 18
+		})
+		this.load.spritesheet('marbleBlocksSpike2','images/tilemap/marble-blocks-spike-2.png',{
+			frameWidth: 18,
+			frameHeight: 18
+		})
+		this.load.spritesheet('marbleBlocksCornerEdge', 'images/tilemap/marble-blocks-corner-edge.png', {
+			frameWidth: 18,
+			frameHeight: 18
 		})
 		this.load.spritesheet("rockBlocks", "images/Tilemap/rock_packed.png", {
 			frameWidth: 18,
@@ -52,18 +68,37 @@ export default class ProjectScene extends Phaser.Scene {
 			frameWidth: 18,
 			frameHeight: 18
 		})
+		this.load.spritesheet('sidespring', 'images/sideways-spring.png', {
+			frameWidth: 18,
+			frameHeight: 18
+		})
+		this.load.tilemapTiledJSON('screen1','images/tilemap/screen1.json')
 	}
 	create() {
 		this.player = this.physics.add.sprite(100, 450, "player").setScale(0.8)
 		this.coin = this.physics.add.sprite(200, 100, 'coin')
 		this.spring = this.physics.add.sprite(300, 100, 'spring')
+		this.sidespring = this.physics.add.sprite(800, 100, 'sidespring').setFlipX(true)
 		this.coin.setCollideWorldBounds(true)
 		this.spring.setCollideWorldBounds(true)
+		this.sidespring.setCollideWorldBounds(true)
 		this.player.setCollideWorldBounds(true)
 		this.cursor = this.input.keyboard.createCursorKeys()
 		this.player.body.setMaxVelocityY(250) 
 		this.player.body.setMaxVelocityX(150)
-		this.load.tilemapTiledJSON
+		const map = this.make.tilemap({key: 'screen1'})
+		const blocktileset = map.addTilesetImage('marble-packed', 'marble_packed')
+		const voidtileset = map.addTilesetImage('void', 'void')
+		const tilesets = [blocktileset, voidtileset]
+		const platformLayer = map.createLayer('platforms', tilesets, 0, 0)
+		platformLayer.setCollisionByProperty({collides: true})
+		this.physics.add.collider(this.player, platformLayer)
+		this.anims.create({
+			key: 'sideboing',
+			frames: this.anims.generateFrameNumbers('sidespring', {start: 0, end: 12}),
+			frameRate:12,
+			repeat: 0
+		})
 		this.anims.create({
 			key: 'boing',
 			frames: this.anims.generateFrameNumbers('spring', {start: 0, end: 12}),
@@ -121,17 +156,17 @@ export default class ProjectScene extends Phaser.Scene {
 			callbackScope: this,
 			loop: true
 		})
-		// this.physics.add.overlap(this.player, this.coin, this.collectCoin, null, this)
-		this.physics.add.overlap(this.player, this.spring, this.Bounce, null, this)
+		this.physics.add.overlap(this.player, this.coin, this.collectCoin, null, this)
+		this.physics.add.overlap(this.player, this.spring, this.bounce, null, this)
+		this.physics.add.overlap(this.player,this.sidespring, this.sideBounce, null, this)
 	}
 	update() {
-		
-		
 		this.playerMovement()
+		
 		
 	}
 	playerMovement() {
-		var standing = this.player.body.touching.down
+		var standing = this.player.body.touching.down||this.player.body.blocked.down
 		var velocityY = this.player.body.velocity.y
 		var d = new Date()
 		var time = d.getTime()
@@ -175,7 +210,7 @@ export default class ProjectScene extends Phaser.Scene {
 				this.player.anims.play('idle', true)
 			}
 		}
-		if (this.cursor.space.isDown && !this.jumping) {
+		if (this.cursor.space.isDown && !this.jumping && standing) {
             this.player.setVelocityY(this.jumpVelocity)
             this.jumping = true
 			this.player.anims.play('jump', true)
@@ -202,9 +237,13 @@ export default class ProjectScene extends Phaser.Scene {
 		}	
 	}
 	collectCoin(player, coin){
-		coin.destroy()
-		this.coinsCollected +=1
-		// this.coinsCollectedText.setText("Coins Collected : " + this.coinsCollected)
+		if(player.body.touching.down){
+			this.coinFollowing = false
+			this.coinsCollected +=1
+			// this.coinsCollectedText.setText("Coins Collected : " + this.coinsCollected)
+		}else {
+			this.coinFollowing = true
+		}
 	}
 	checkOneWay(player, oneWay){
 		if(player.y < oneWay.y){
@@ -213,10 +252,24 @@ export default class ProjectScene extends Phaser.Scene {
 		return false
 	}
 	animateCoin(coin){
-		coin.anims.play("spin", true)
+		if(coin && coin.active){
+			coin.anims.play("spin", true)
+		}
 	}
-	Bounce(player, spring){
+	bounce(player, spring){
 		spring.anims.play('boing', true)
 		player.setVelocityY(-this.acceleration * 10)
 	}
+	sideBounce(player, sidespring){
+		sidespring.anims.play('sideboing', true)
+		player.setVelocity(-this.acceleration*10, -this.acceleration)	
+		this.player.body.drag.x
+		this.time.addEvent({
+			delay: 200,
+			callback: () => {
+				this.player.body.setMaxVelocityX(150)
+			},
+			callbackScope: this
+		})
+	}	
 }
