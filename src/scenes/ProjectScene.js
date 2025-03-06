@@ -84,6 +84,8 @@ export default class ProjectScene extends Phaser.Scene {
 		this.sidespring.setCollideWorldBounds(true)
 		this.player.setCollideWorldBounds(true)
 		this.cursor = this.input.keyboard.createCursorKeys()
+		this.x = this.input.keyboard.addKey('X')
+		this.z = this.input.keyboard.addKey('Z', true, true)
 		this.player.body.setMaxVelocityY(250) 
 		this.player.body.setMaxVelocityX(150)
 		const map = this.make.tilemap({key: 'screen1'})
@@ -91,17 +93,19 @@ export default class ProjectScene extends Phaser.Scene {
 		const voidtileset = map.addTilesetImage('void', 'void')
 		const tilesets = [blocktileset, voidtileset]
 		const platformLayer = map.createLayer('platforms', tilesets, 0, 0)
+		platformLayer.width = 800
+		platformLayer.height = 600
 		platformLayer.setCollisionByProperty({collides: true})
 		this.physics.add.collider(this.player, platformLayer)
 		this.anims.create({
 			key: 'sideboing',
-			frames: this.anims.generateFrameNumbers('sidespring', {start: 0, end: 12}),
+			frames: this.anims.generateFrameNumbers('sidespring', {start: 0, end: 10}),
 			frameRate:12,
 			repeat: 0
 		})
 		this.anims.create({
 			key: 'boing',
-			frames: this.anims.generateFrameNumbers('spring', {start: 0, end: 12}),
+			frames: this.anims.generateFrameNumbers('spring', {start: 0, end: 10}),
 			frameRate: 12,
 			repeat: 0
 
@@ -263,7 +267,7 @@ export default class ProjectScene extends Phaser.Scene {
 	sideBounce(player, sidespring){
 		sidespring.anims.play('sideboing', true)
 		player.setVelocity(-this.acceleration*10, -this.acceleration)	
-		this.player.body.drag.x
+		this.player.body.setMaxVelocityX(300)
 		this.time.addEvent({
 			delay: 200,
 			callback: () => {
@@ -271,5 +275,10 @@ export default class ProjectScene extends Phaser.Scene {
 			},
 			callbackScope: this
 		})
-	}	
+	}
+	dash(player){
+		if(this.x.isDown && this.cursor.up.isDown && this.cursor.right.isDown){
+
+		}
+	}
 }
