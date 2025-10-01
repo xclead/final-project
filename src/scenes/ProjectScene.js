@@ -77,6 +77,14 @@ export default class ProjectScene extends Phaser.Scene {
 			frameWidth: 18,
 			frameHeight: 18,
 		})
+		this.load.spritesheet("respawn", "images/adventurer-sheet-respawn.png", {
+			frameWidth: 22,
+			frameHeight: 30,
+		})
+		this.load.spritesheet("death", "images/adventurer-sheet-death.png", {
+			frameWidth: 22,
+			frameHeight: 32,
+		})
 		this.load.image('hitbox', 'images/hitbox.png')
 		this.load.image("spike", "images/spike.png")
 		this.load.image("oneway", "images/oneway.png")
@@ -94,6 +102,10 @@ export default class ProjectScene extends Phaser.Scene {
 			frameWidth: 16,
 			frameHeight: 16
 		})
+		this.load.spritesheet("climb", "images/adventurer-scrappedClimb.png",{
+			frameWidth: 22,
+			frameHeight: 32
+		})
 		this.load.image('crystal', 'images/dashCrystal.png')
 		this.load.image('respawn', 'images/dashCrystal-respawn.png')
 		this.load.image('transition', 'images/transition.png')
@@ -109,6 +121,7 @@ export default class ProjectScene extends Phaser.Scene {
 		}else{
 		this.player = this.physics.add.sprite(32, 480, "player").setScale(0.8)
 		}
+		this.player.body.setSize(24, 30)
 		// this.climbhitbox = this.physics.add.sprite(this.player.x, this.player.y, 'player').setVisible(false)
 		// this.climbhitbox.body.setAllowGravity(false)
 		// this.climbhitbox.body.setSize(14, 2)
@@ -209,6 +222,24 @@ export default class ProjectScene extends Phaser.Scene {
 			frameRate:4,
 			repeat: 0
 		})
+		this.anims.create({
+			key: "respawn",
+			frames: this.anims.generateFrameNumbers("respawn", {start: 0, end: 11}),
+			frameRate: 12,
+			repeat: 0
+		})
+		this.anims.create({
+			key: "death",
+			frames: this.anims.generateFrameNumbers("death", {start: 0, end: 14}),
+			frameRate: 15,
+			repeat: 0
+		})
+		this.anims.create({
+			key: "climb",
+			frames: this.anims.generateFrameNumbers("climb", {start: 0, end: 1}),
+			frameRate: 1,
+			repeat: 0
+		})
 		this.physics.add.collider(this.player, this.oneWay, null, this.checkOneWay, this)
 		this.time.addEvent({
 			delay: 2000,
@@ -232,11 +263,12 @@ export default class ProjectScene extends Phaser.Scene {
 		
 	} 
 	update() {
+		// this.player.body.setSize(28, 30)
 		if(this.player.body.blocked.left){
-			console.log('l')
+			// console.log('l')
 		}
 		if(this.player.body.blocked.right){
-			console.log('r')
+			// console.log('r')
 		}
 		if(this.cursor.down.isDown && !this.downPressed) {
 			this.upPressed = false
@@ -262,8 +294,8 @@ export default class ProjectScene extends Phaser.Scene {
 		}
 		this.playerMovement()
 		this.walljump()
-		this.velocityText.setText(`VelocityX: ${this.player.body.velocity.x.toFixed(2)}\nVelocityY: ${this.player.body.velocity.y.toFixed(2)}`)
-		if(!this.z.isDown && !this.dashing && !this.bouncing && !this.slide){
+		this.velocityText.setText(`Room ${this.room}`)
+		if(!this.z.isDown && !this.dashing && !this.bouncing && !this.slide && !this.dying){
 			this.player.body.setAllowGravity(true)
 			this.player.body.setMaxVelocityX(150)
 			this.climbing = false
@@ -272,7 +304,7 @@ export default class ProjectScene extends Phaser.Scene {
 			// this.player.setVelocityX(-0.0001)
 			this.canClimb = true
 		}
-		if(!this.climbing && this.player.body.blocked.right){
+		if(!this.climbing && this.player.body.blocked.right || !this.climbing && this.wasBlockedRight){
 			// this.player.setVelocityX(0.0001)
 			this.canClimb = true
 		}
@@ -288,6 +320,8 @@ export default class ProjectScene extends Phaser.Scene {
 			this.wasBlockedLeft = false
 			this.wasBlockedRight = false
 		}
+		if(this.dying) this.player.body.setAllowGravity(false)
+		
 	}
 	playerMovement() {
 		if(this.climbing || this.dashing || this.dying || this.slide) return
@@ -322,7 +356,7 @@ export default class ProjectScene extends Phaser.Scene {
 				this.player.setAccelerationX(-this.acceleration*4)
 				this.player.anims.play('run', true)
 				this.player.setFlipX(true)
-			}else {
+			}else if(!this.climbing) {
 				this.player.setAccelerationX(-this.acceleration * 4)
 				// this.player.anims.play('fall', true)
 				this.player.anims.play('run', true)
@@ -330,14 +364,14 @@ export default class ProjectScene extends Phaser.Scene {
 			}
 			
 		} else if (this.cursor.right.isDown){
-			if(this.cursor.down.isDown){
+			if(this.cursor.down.isDown || this.climbing){
 				return
 			}
 			if(standing){
 				this.player.setAccelerationX(this.acceleration*4)
 				this.player.anims.play('run', true)
 				this.player.setFlipX(false)
-			} else {
+			} else if(!this.climbing) {
 				this.player.setAccelerationX(this.acceleration*4)
 				// this.player.anims.play('fall', true)
 				this.player.anims.play('run', true)
@@ -365,17 +399,19 @@ export default class ProjectScene extends Phaser.Scene {
         //     this.jumping = true
 			// this.player.anims.play('jump', true)
         // }
-		if(velocityY > 20){
+		if(velocityY > 20 && !this.climbing){
 			this.player.anims.play('fall', true)
 		}
-		if(velocityY < 0){
+		if(velocityY < 0 && !this.climbing){
 			this.player.anims.play('jump', true)
 		}
 		
 		if (!standing){
 			this.coyoteTime = time + 100
 		}
+		// if(this.coyoteTime >= time) console.log('something') 
 		if ((standing || time <= this.coyoteTime) && this.cursor.space.isDown && !this.jumping){
+			// console.log(this.coyoteTime, time)
 			this.player.setVelocityY(this.jumpVelocity)
 			this.jumping = true
 			this.player.anims.play('jump', true)
@@ -385,6 +421,7 @@ export default class ProjectScene extends Phaser.Scene {
                 this.jumping = false;
             }
 		}	
+		if(!standing) this.jumping = true
 	}
 	collectCoin(player, coin){
 		if(player.body.touching.down){
@@ -432,7 +469,7 @@ export default class ProjectScene extends Phaser.Scene {
 		
 	// }
 	dash() {
-		if (this.dashing || this.dashUsed) return
+		if (this.dashing || this.dashUsed || this.dying) return
 		this.climbing = false
 		this.dashing = true
 		let dashX = 0
@@ -442,8 +479,8 @@ export default class ProjectScene extends Phaser.Scene {
             dashX = 0
 			this.player.body.setMaxVelocityY(300)
 			this.player.body.setMaxVelocityX(0)
-			console.log('up')
-			console.log(this.player.body.maxVelocity)
+			// console.log('up')
+			// console.log(this.player.body.maxVelocity)
         }
         if(this.cursor.down.isDown) {
             dashY = 1
@@ -570,7 +607,7 @@ export default class ProjectScene extends Phaser.Scene {
 		}
 	}
 	climb(){
-		if(this.dashing) return
+		if(this.dashing || this.dying) return
 		if(this.bouncing) return
 		if(!this.wasBlocked) this.wasBlocked = true
 		if(!this.wasBlockedRight && this.player.body.blocked.right) this.wasBlockedRight = true
@@ -580,14 +617,15 @@ export default class ProjectScene extends Phaser.Scene {
 		var velocityX = this.player.body.velocity.x
 		this.climbing = true
 		if(this.z.isDown){
-			console.log(this.slide, this.climbing)
-			
+			// console.log(this.slide, this.climbing)
+			this.player.body.setAllowGravity(false)
+			this.player.anims.play('climb', false)
 			if((velocityX > 10 || velocityX < -10)){
 				this.player.body.setAllowGravity(true)
 				this.climbing = false
 				this.canClimb = false
 				this.player.body.setMaxVelocity(150, 275)
-				console.log('stop')
+				// console.log('stop')
 				if(this.rightPressed && this.upPressed && this.wasBlockedRight|| this.cursor.right.isDown && this.cursor.up.isDown && this.wasBlockedRight){
 					this.player.setPosition(this.player.x + 3, this.player.y)
 				}
@@ -643,7 +681,7 @@ export default class ProjectScene extends Phaser.Scene {
 					this.time.addEvent({
 					delay: 200,
 					callback: () => {
-						console.log('not')
+						// console.log('not')
 						this.allowGravity = true
 						}
 					})
@@ -659,7 +697,7 @@ export default class ProjectScene extends Phaser.Scene {
 					this.time.addEvent({
 					delay: 200,
 					callback: () => {
-						console.log('not')
+						// console.log('not')
 						this.allowGravity = true
 						}
 					})
@@ -682,57 +720,79 @@ export default class ProjectScene extends Phaser.Scene {
 		if(this.dying) return
 		this.dying = true
 		this.player.setAcceleration(0,0)
+		this.player.setVelocity(0, 0)
 		// this.player.setVelocity(0, 0)
 		this.player.setDamping(true)
 		this.player.setDrag(0.8, 0.7)
-		player.body.setAllowGravity(false)
-		player.setActive(false)
-		player.anims.play('crouch', true)
+		this.player.body.setAllowGravity(false)
+		player.anims.play('death', true)
 		if(this.prevRoom > this.room){
 			this.time.addEvent({
-			delay: 1500,
+			delay: 1100,
 			callback: () => {
-				player.setPosition(664, 400)
+				player.setPosition(664, 416)
 				player.setDamping(false)
 				player.setDrag(1, 1)
+				this.player.anims.play('respawn', true)
+				this.dashing = false
+				this.climbing = false
+				this.wasBlocked = false
+				this.wasBlockedLeft = false
+				this.wasBlockedRight = false
+			},
+			callbackScope: this
+		})
+		this.time.addEvent({
+			delay: 2100,
+			callback: () => {
 				player.body.setAllowGravity(true)
-				player.setActive(true)
 				this.dying = false
 			},
 			callbackScope: this
 		})
 		}else{
 		this.time.addEvent({
-			delay: 1500,
+			delay: 1100,
 			callback: () => {
-				player.setPosition(32, 480)
+				player.setPosition(32, 464)
 				player.setDamping(false)
 				player.setDrag(1, 1)
+				this.player.anims.play('respawn', true)
+				this.dashing = false
+				this.climbing = false
+				this.wasBlocked = false
+				this.wasBlockedLeft = false
+				this.wasBlockedRight = false
+			},
+			callbackScope: this
+		})
+		this.time.addEvent({
+			delay: 2100,
+			callback: () => {
 				player.body.setAllowGravity(true)
-				player.setActive(true)
 				this.dying = false
-				this.slide = false
 			},
 			callbackScope: this
 		})
 	}
 	}
 	switchSceneForward(){
-		this.scene.start("screen2-scene")
+		this.prevRoom = this.room
+		this.scene.start("screen2-scene", {prevRoom: this.prevRoom})
 		this.scene.sleep("Project-scene")
 	}
 	wasBlockedCheckerRight(){
-		console.log('check')
+		// console.log('check')
 		if(!this.cursor.right.isDown && !this.cursor.left.isDown){
-			console.log('right')
+			// console.log('right')
 			this.wasBlockedRight = true
 			this.wasBlocked = true
 		}
 	}
 	wasBlockedCheckerLeft(){
-		console.log('check')
+		// console.log('check')
 		if(!this.cursor.right.isDown && !this.cursor.left.isDown){
-			console.log('left')
+			// console.log('left')
 			this.wasBlockedLeft = true
 			this.wasBlocked = true
 		}

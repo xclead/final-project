@@ -51,6 +51,18 @@ export default class Screen4Scene extends Phaser.Scene {
 			frameWidth: 16,
 			frameHeight: 16	
 		})
+		this.load.spritesheet('respawn', 'images/adventurer-sheet-respawn.png', {
+			frameWidth: 22,
+			frameHeight: 30
+		})
+		this.load.spritesheet("death", "images/adventurer-sheet-death.png", {
+			frameWidth: 22,
+			frameHeight: 32,
+		})
+		this.load.spritesheet("climb", "images/adventurer-scrappedClimb.png",{
+			frameWidth: 22,
+			frameHeight: 32
+		})
     	this.load.tilemapTiledJSON('screen4','images/tilemap/newScreen4.tmj')
         this.load.image('hitbox', 'images/hitbox.png')
 		this.load.image("spike", "images/spike.png")
@@ -62,8 +74,9 @@ export default class Screen4Scene extends Phaser.Scene {
     create(){
 		if(this.prevRoom > this.room){
 			this.player = this.physics.add.sprite(760, 452, "player").setScale(0.8)
+		} else {
+			this.player = this.physics.add.sprite(40, 40, "player").setScale(0.8)
 		}
-        this.player = this.physics.add.sprite(8, 24, "player").setScale(0.8)
         this.spring = this.physics.add.sprite(168, 456, 'spring')
 		this.spring2 = this.physics.add.sprite(168, 200, 'spring')
 		this.spring3 = this.physics.add.sprite(424, 312, 'spring')
@@ -101,7 +114,7 @@ export default class Screen4Scene extends Phaser.Scene {
         this.cursor = this.input.keyboard.createCursorKeys()
 		this.x = this.input.keyboard.addKey('X')
 		this.z = this.input.keyboard.addKey('Z', true, false)
-		this.player.body.setMaxVelocityY(275) 
+		this.player.body.setMaxVelocityY(200) 
 		this.player.body.setMaxVelocityX(150)
 		this.room4 = this.make.tilemap({key: 'screen4'})
         const hitboxtileset = this.room4.addTilesetImage('hitbox', 'hitbox')
@@ -155,6 +168,24 @@ export default class Screen4Scene extends Phaser.Scene {
 			frameRate:4,
 			repeat: 0
 		})
+		this.anims.create({
+			key: "respawn",
+			frames: this.anims.generateFrameNumbers("respawn", {start:0, end:11}),
+			frameRate:10,
+			repeat: 0
+		})
+		this.anims.create({
+			key: "death",
+			frames: this.anims.generateFrameNumbers("death", {start: 0, end: 14}),
+			frameRate: 15,
+			repeat: 0
+		})
+		this.anims.create({
+			key: "climb",
+			frames: this.anims.generateFrameNumbers("climb", {start: 0, end: 1}),
+			frameRate: 1,
+			repeat: 0
+		})
         this.physics.world.createDebugGraphic()
         this.velocityText = this.add.text(10, 10, '', { fontSize: '16px', color: '#fff' })
 		this.physics.add.collider(this.player, transitionLayer, this.switchSceneBackward, null, this)
@@ -171,6 +202,14 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.physics.add.overlap(this.player, this.dashCrystal7, this.restoreDash7, null, this)
     }
     update(){
+		if(this.cursor.down.isDown && !this.downPressed) {
+			this.upPressed = false
+			this.downPressed = true
+		}
+		if(this.cursor.up.isDown && !this.upPressed) {
+			this.upPressed = true
+			this.downPressed = false
+		}
         if(this.cursor.left.isDown && !this.leftPressed) {
 			this.leftPressed = true
 			this.rightPressed = false
@@ -188,32 +227,42 @@ export default class Screen4Scene extends Phaser.Scene {
         this.playerMovement()
 		this.walljump()
 		this.velocityText.setText(`VelocityX: ${this.player.body.velocity.x.toFixed(2)}\nVelocityY: ${this.player.body.velocity.y.toFixed(2)}`)
-		if(!this.z.isDown && !this.dashing){
+		if(!this.z.isDown && !this.dashing && !this.dying){
 			this.player.body.setAllowGravity(true)
 			this.player.body.setMaxVelocityX(150)
 			this.climbing = false
 		}
-	if(!this.climbing && this.player.body.touching.left || !this.climbing && this.player.body.blocked.left){
-		// this.player.setVelocityX(-0.0001)
-		this.canClimb = true
-	}
-	if(!this.climbing && this.player.body.touching.right || !this.climbing && this.player.body.blocked.right){
-		// this.player.setVelocityX(0.0001)
-		this.canClimb = true
-	}
-	if(!this.player.body.touching.left && !this.z.isDown || !this.player.body.touching.right && !this.z.isDown || !this.player.body.blocked.left && !this.z.isDown || !this.player.body.blocked.right && !this.z.isDown){
-		this.canClimb = false
-	}
-	if(this.canClimb) this.climb()
-	this.resetDash()
+		if(!this.climbing && this.player.body.blocked.left){
+			// this.player.setVelocityX(-0.0001)
+			this.canClimb = true
+		}
+		if(!this.climbing && this.player.body.blocked.right){
+			// this.player.setVelocityX(0.0001)
+			this.canClimb = true
+		}
+		if((!this.player.body.blocked.left && !this.player.body.blocked.right) && !this.z.isDown && !this.wasBlocked){
+			this.canClimb = false
+		}
+		if(this.canClimb) this.climb()
+		this.resetDash()
+		if(this.player.body.blocked.right) this.wasBlockedCheckerRight()
+		if(this.player.body.blocked.left) this.wasBlockedCheckerLeft()
+		if(this.cursor.right.isDown || this.player.body.velocity.x > 0|| this.cursor.left.isDown || this.player.body.velocity.x < 0){
+			this.wasBlocked = false
+			this.wasBlockedLeft = false
+			this.wasBlockedRight = false
+		}
+		if(this.dying) this.player.body.setAllowGravity(false)
     }
     playerMovement() {
-		if(this.climbing || this.dashing || this.dying) return
+		if(this.climbing || this.dashing || this.dying || this.slide) return
 		var standing = this.player.body.touching.down||this.player.body.blocked.down
 		var velocityY = this.player.body.velocity.y
 		var velocityX = this.player.body.velocity.x
+		var d = new Date()
+		var time = d.getTime()
 		if(!this.cursor.down.isDown && !this.dashing){
-			this.player.body.setMaxVelocityY(275) 
+			this.player.body.setMaxVelocityY(200) 
 			this.player.body.setMaxVelocityX(150)
 		}
 		if(this.cursor.down.isDown && standing) {
@@ -226,6 +275,7 @@ export default class Screen4Scene extends Phaser.Scene {
 			} else if( this.cursor.right.isDown){
 				this.player.setFlipX(false)
 			}
+		} else{
 		}
 		if (this.cursor.left.isDown) {
 			if(this.cursor.down.isDown || this.climbing){
@@ -271,15 +321,19 @@ export default class Screen4Scene extends Phaser.Scene {
 				this.player.anims.play('idle', true)
 			}
 		}
-		if (this.cursor.space.isDown && !this.jumping && standing) {
-            this.player.setVelocityY(this.jumpVelocity)
-            this.jumping = true
-			this.player.anims.play('jump', true)
-        }
 		if(velocityY > 20){
 			this.player.anims.play('fall', true)
 		}
 		if(velocityY < 0){
+			this.player.anims.play('jump', true)
+		}
+		
+		if (!standing){
+			this.coyoteTime = time + 100
+		}
+		if ((standing || time <= this.coyoteTime) && this.cursor.space.isDown && !this.jumping){
+			this.player.setVelocityY(this.jumpVelocity)
+			this.jumping = true
 			this.player.anims.play('jump', true)
 		}
 		if (this.cursor.space.isUp) {
@@ -287,6 +341,7 @@ export default class Screen4Scene extends Phaser.Scene {
                 this.jumping = false;
             }
 		}	
+		if(!standing) this.jumping = true
 	}
     bounce(player,spring){
 		spring.anims.play('boing', true)
@@ -304,7 +359,7 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.dashUsed = false
 	}
     dash() {
-		if (this.dashing || this.dashUsed) return
+		if (this.dashing || this.dashUsed || this.dying) return
 		this.dashing = true
 		let dashX = 0
 		let dashY = 0
@@ -313,8 +368,8 @@ export default class Screen4Scene extends Phaser.Scene {
             dashX = 0
 			this.player.body.setMaxVelocityY(300)
 			this.player.body.setMaxVelocityX(0)
-			console.log('up')
-			console.log(this.player.body.maxVelocity)
+			// console.log('up')
+			// console.log(this.player.body.maxVelocity)
         }
         if(this.cursor.down.isDown) {
             dashY = 1
@@ -519,7 +574,7 @@ export default class Screen4Scene extends Phaser.Scene {
 		})
 	}
 	resetDash() {
-		if (this.player.body.blocked.down ||this.player.body.touching.down) {
+		if (this.player.body.blocked.down && this.dashUsed) {
 			this.time.addEvent({
 				delay: 100, 
 				callback: () => {
@@ -530,60 +585,104 @@ export default class Screen4Scene extends Phaser.Scene {
 		}
 	}
     climb(){
+		if(this.dashing || this.dying) return
+		if(!this.wasBlocked) this.wasBlocked = true
+		if(!this.wasBlockedRight && this.player.body.blocked.right) this.wasBlockedRight = true
+		if(!this.wasBlockedLeft && this.player.body.blocked.left) this.wasBlockedLeft = true
+		if(this.jumping && (this.player.body.blocked.left || this.player.body.blocked.right)) this.jumping=false
 		var velocityY = this.player.body.velocity.y
 		var velocityX = this.player.body.velocity.x
 		this.climbing = true
-	
 		if(this.z.isDown){
-			// if(!this.player.body.touching.right || !this.player.body.touching.left) return
-			if(this.cursor.up.isDown){
+			this.player.body.setAllowGravity(false)
+			this.player.anims.play('climb', false)
+			if((velocityX > 10 || velocityX < -10)){
+				this.player.body.setAllowGravity(true)
+				this.climbing = false
+				this.canClimb = false
+				this.player.body.setMaxVelocity(150, 275)
+				// console.log('stop')
+				if(this.rightPressed && this.upPressed && this.wasBlockedRight|| this.cursor.right.isDown && this.cursor.up.isDown && this.wasBlockedRight){
+					this.player.setPosition(this.player.x + 3, this.player.y)
+				}
+			}			
+			if(this.cursor.up.isDown && this.climbing){
 				this.player.body.setAllowGravity(false)
 				this.player.setVelocityY(-75)
 				this.player.setAccelerationY(0)
 				
 				
-			}else if(this.cursor.down.isDown){
+			}else if(this.cursor.down.isDown && this.climbing){
 				this.player.body.setAllowGravity(false)
 				this.player.setVelocityY(75)
 				this.player.setAccelerationY(0)
-			} else if(!this.cursor.up.isDown && !this.cursor.down.isDown &&!this.cursor.space.isDown){
+			} else if(!this.cursor.up.isDown && !this.cursor.down.isDown &&!this.cursor.space.isDown && !this.jumping && this.climbing){
 				this.player.body.setAllowGravity(false)
 				this.player.setVelocityY(0)
 				this.player.setAccelerationY(0)
 			} 
+			
 		}
-		if(!this.z.isDown) this.climbing = false
-		
+		if(!this.z.isDown) {
+			this.climbing = false
+		}
 	}
 	walljump(){
-		if(this.jumping){
-			if(this.player.body.touching.left || this.player.body.touching.right){
-				this.jumping = false
+		if(this.allowGravity){
+			if(this.wasBlocked){
+				this.player.body.setAllowGravity(false)
+				this.allowGravity = false
+			}
+			if(!this.wasBlocked || this.player.body.velocity.x > 0 || this.player.body.velocity.x < 0){
+				this.player.body.setAllowGravity(true)
+				this.allowGravity = false
 			}
 		}
-		// this.jumping = false
-		if(this.cursor.space.isDown && !this.jumping && this.climbing){
-			if(this.cursor.right.isDown){
-				this.player.setVelocityX(this.acceleration*4)
-			}
-			if(this.cursor.left.isDown){
-				this.player.setVelocityX(-this.acceleration*4)
-			}
-			this.player.setVelocityY(this.jumpVelocity)
-				this.jumping = true
-				this.player.anims.play('jump', true)
-				this.player.body.setAllowGravity(true)
-				// if(this.player.body.velocity.y = -10){
-				// 	this.jumping = false
-				// 	this.player.body.setAllowGravity(false)
-				// }
-				this.time.addEvent({
-					delay: 300,
+		if(this.climbing){
+			if(this.cursor.space.isDown && !this.jumping){
+				if(this.cursor.right.isDown){
+					this.climbing = false
+					this.player.setVelocityY(this.jumpVelocity)
+					this.player.setVelocityX(this.acceleration*4)
+					this.jumping = true
+					this.player.anims.play('jump', true)
+					this.player.body.setAllowGravity(true)
+					this.time.addEvent({
+					delay: 200,
 					callback: () => {
-						this.jumping = false
-						this.player.body.setAllowGravity(false)
-					}
-				})
+						// console.log('not')
+						this.allowGravity = true
+						}
+					})
+					return
+				}
+				if(this.cursor.left.isDown){
+					this.climbing = false
+					this.player.setVelocityY(this.jumpVelocity)
+					this.player.setVelocityX(-this.acceleration*4)
+					this.jumping = true
+					this.player.anims.play('jump', true)
+					this.player.body.setAllowGravity(true)
+					this.time.addEvent({
+					delay: 200,
+					callback: () => {
+						// console.log('not')
+						this.allowGravity = true
+						}
+					})
+					return
+				}
+			}
+			if(this.player.body.velocity.y = 0){
+					this.jumping = false
+					this.player.body.setAllowGravity(false)
+				}
+		}
+		if(this.player.body.blocked.down || !this.player.body.blocked.right && !this.cursor.right.isDown || !this.player.body.blocked.left && this.cursor.left.isDown || this.climbing){
+			this.slide = false
+		}
+		if((this.player.body.blocked.left || this.player.body.blocked.right)){
+			this.walljumping = false
 		}
 	}
 	death(player, hitboxLayer){
@@ -593,39 +692,61 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.player.setVelocity(0, 0)
 		this.player.setDamping(true)
 		this.player.setDrag(0.8, 0.7)
-		player.body.setAllowGravity(false)
-		player.setActive(false)
-		if(player.body.velocity.x > 0){
-			player.setVelocity(-50, -50)
-			console.log("left")
-		}
-		player.anims.play('crouch', true)
+		this.player.body.setAllowGravity(false)
+		// player.setActive(false)
+		// if(player.body.velocity.x > 0){
+		// 	player.setVelocity(-50, -50)
+		// 	console.log("left")
+		// }
+		player.anims.play('death', true)
 		if(this.prevRoom > this.room){
 			this.time.addEvent({
-				delay: 1500,
+				delay: 1100,
 				callback: () => {
 					player.setPosition(760, 452)
 					player.setDamping(false)
 					player.setDrag(1, 1)
-					player.body.setAllowGravity(true)
-					player.setActive(true)
-					this.dying = false
+					this.player.anims.play('respawn', true)
+					this.dashing = false
+				this.climbing = false
+				this.wasBlocked = false
+				this.wasBlockedLeft = false
+				this.wasBlockedRight = false
+				},
+				callbackScope: this
+			})
+			this.time.addEvent({
+				delay: 2100,
+				callback: () => {
+				player.body.setAllowGravity(true)
+				this.dying = false
 				},
 				callbackScope: this
 			})
 		}else{
 		this.time.addEvent({
-			delay: 1500,
+			delay: 1100,
 			callback: () => {
-				player.setPosition(40, 40)
+				player.setPosition(40, 56)
 				player.setDamping(false)
 				player.setDrag(1, 1)
-				player.body.setAllowGravity(true)
-				player.setActive(true)
-				this.dying = false
+				this.player.anims.play('respawn', true)
+				this.dashing = false
+				this.climbing = false
+				this.wasBlocked = false
+				this.wasBlockedLeft = false
+				this.wasBlockedRight = false
 			},
 			callbackScope: this
 		})
+		this.time.addEvent({
+				delay: 2100,
+				callback: () => {
+				player.body.setAllowGravity(true)
+				this.dying = false
+				},
+				callbackScope: this
+			})
 	}
 	}
     death2(player, downhitboxLayer){
@@ -635,25 +756,62 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.player.setVelocity(0, 0)
 		this.player.setDamping(true)
 		this.player.setDrag(0.8, 0.7)
-		player.body.setAllowGravity(false)
-		player.setActive(false)
-		if(player.body.velocity.x > 0){
-			player.setVelocity(-50, -50)
-			console.log("left")
-		}
-		player.anims.play('crouch', true)
+		this.player.body.setAllowGravity(false)
+		// player.setActive(false)
+		// if(player.body.velocity.x > 0){
+		// 	player.setVelocity(-50, -50)
+		// 	console.log("left")
+		// }
+		player.anims.play('death', true)
+		if(this.prevRoom > this.room){
+			this.time.addEvent({
+				delay: 1100,
+				callback: () => {
+					player.setPosition(760, 452)
+					player.setDamping(false)
+					player.setDrag(1, 1)
+					this.player.anims.play('respawn', true)
+					this.dashing = false
+				this.climbing = false
+				this.wasBlocked = false
+				this.wasBlockedLeft = false
+				this.wasBlockedRight = false
+				},
+				callbackScope: this
+			})
+			this.time.addEvent({
+				delay: 2100,
+				callback: () => {
+				player.body.setAllowGravity(true)
+				this.dying = false
+				},
+				callbackScope: this
+			})
+		}else{
 		this.time.addEvent({
-			delay: 1500,
+			delay: 1100,
 			callback: () => {
-				player.setPosition(40, 40)
+				player.setPosition(40, 56)
 				player.setDamping(false)
 				player.setDrag(1, 1)
-				player.body.setAllowGravity(true)
-				player.setActive(true)
-				this.dying = false
+				this.player.anims.play('respawn', true)
+				this.dashing = false
+				this.climbing = false
+				this.wasBlocked = false
+				this.wasBlockedLeft = false
+				this.wasBlockedRight = false
 			},
 			callbackScope: this
 		})
+		this.time.addEvent({
+				delay: 2100,
+				callback: () => {
+				player.body.setAllowGravity(true)
+				this.dying = false
+				},
+				callbackScope: this
+			})
+	}
 	}
 	switchSceneForward(){
 		this.prevRoom = this.room
@@ -664,5 +822,21 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.prevRoom = this.room
 		this.scene.start("screen3-scene", {prevRoom: this.prevRoom})
 		this.scene.sleep("screen4-scene")
+	}
+	wasBlockedCheckerRight(){
+		// console.log('check')
+		if(!this.cursor.right.isDown && !this.cursor.left.isDown){
+			// console.log('right')
+			this.wasBlockedRight = true
+			this.wasBlocked = true
+		}
+	}
+	wasBlockedCheckerLeft(){
+		// console.log('check')
+		if(!this.cursor.right.isDown && !this.cursor.left.isDown){
+			// console.log('left')
+			this.wasBlockedLeft = true
+			this.wasBlocked = true
+		}
 	}
 }
