@@ -1,13 +1,12 @@
 import Phaser from "phaser"
-export default class Screen2Scene extends Phaser.Scene {
+export default class ScreenStartScene extends Phaser.Scene {
 	constructor(scene, x, y, texture, config) {
-		super("screen2-scene")
+		super("screenEnd-scene")
     }
     init(data){
-        this.cursor = undefined
-        this.room2 = undefined
         this.player = undefined
-		this.coin = undefined
+        this.cursor = undefined
+        this.roomEnd = undefined
         this.acceleration = 175
 		this.jumpVelocity = -200
 		this.jumping = false
@@ -20,17 +19,13 @@ export default class Screen2Scene extends Phaser.Scene {
         this.climbing = false
 		this.canClimb = false
         this.dying = false
-		this.room = 2
-		this.prevRoom = data.prevRoom
-		this.upPressed = false
-		this.downPressed = false
-		this.checkpoint21 = undefined
-		this.checkpoint22 = undefined
-		this.spawnpointX = undefined
-		this.spawnpointY = undefined
-		this.breakable2 = undefined
-		this.deathCount = data.deathCount || 0
-		this.collectedCoins = data.collectedCoins || 0
+		this.start = undefined
+        this.collectedCoins = data.collectedCoins || 0
+		this.deathCount = data.deathCount
+        this.winText = undefined
+        this.coinText = undefined
+		this.coin2Text = undefined
+        this.deathText = undefined
 		this.collected1 = data.collected1
 		this.collected2 = data.collected2
 		this.collected3 = data.collected3
@@ -41,9 +36,8 @@ export default class Screen2Scene extends Phaser.Scene {
 		this.blockBroken3 = data.blockBroken3
 		this.blockBroken4 = data.blockBroken4
 		this.blockBroken5 = data.blockBroken5
-
     }
-    preload() {
+    preload(){
         this.load.spritesheet('player', 'images/adventurer-sheet-new.png', {
 			frameWidth: 20,
 			frameHeight: 30
@@ -80,79 +74,30 @@ export default class Screen2Scene extends Phaser.Scene {
 			frameWidth: 22,
 			frameHeight: 32
 		})
-		this.load.spritesheet("coin", "images/coin3_16x16.png", {
-			frameWidth: 16,
-			frameHeight: 16,
-		})
-		this.load.spritesheet("ghostCoin", "images/ghostCoin.png", {
-			frameWidth: 16,
-			frameHeight: 16,
-		})
-    	this.load.tilemapTiledJSON('screen2','images/tilemap/newScreen2.tmj')
-        this.load.image('hitbox', 'images/hitbox.png')
-		this.load.image("spike", "images/spike.png")
-		this.load.image("marble16x16", "images/Tilemap/marble-packed-16x16.png")
-		this.load.image('void','images/void.png' )
-        this.load.image('transition', 'images/transition.png')
-		this.load.image('oneway', 'images/oneway.png')
-		this.load.image('breakable2', 'images/breakableBlock2.1.png')
+        this.load.image("marble16x16", "images/Tilemap/marble-packed-16x16.png")
+        this.load.tilemapTiledJSON("roomEnd", "images/Tilemap/endScreen.tmj")
+        this.load.image('oneway2', 'images/oneway2.png')
 		this.load.image("background", "images/background.png")
     }
     create(){
 		this.add.image(400, 296, "background").setAlpha(0.2)
-		if(this.prevRoom > this.room){
-			this.player = this.physics.add.sprite(744, 324, "player").setScale(0.8).setFlipX(true)
-		}else {
-        this.player = this.physics.add.sprite(64, 420, "player").setScale(0.8)
-		}
-		this.checkpoint21 = this.add.rectangle(72, 408, 144, 48)
-		this.physics.add.existing(this.checkpoint21, true)
-		this.checkpoint22 = this.add.rectangle(712, 312, 144, 48)
-		this.physics.add.existing(this.checkpoint22, true)
-		this.oneway = this.physics.add.staticSprite(432, 344, 'oneway')
-		if(this.collected2){
-			this.coin = this.physics.add.sprite(672, 208, 'ghostCoin')
-		} else {
-			this.coin = this.physics.add.sprite(672, 208, 'coin')
-		}
-		this.coin.body.setAllowGravity(false)
-		this.physics.add.collider(this.player, this.oneway)
-		this.player.setCollideWorldBounds(true)
+        this.player = this.physics.add.sprite(88, 552, "player").setScale(0.8)
+        this.oneway = this.physics.add.staticSprite(88, 568, 'oneway2')
+		this.start = this.add.rectangle(808, 88, 48, 48)
+		this.physics.add.existing(this.start, true)
+        this.physics.add.collider(this.player, this.oneway)
+        this.player.setCollideWorldBounds(true)
 		this.cursor = this.input.keyboard.createCursorKeys()
 		this.x = this.input.keyboard.addKey('X')
 		this.z = this.input.keyboard.addKey('Z', true, false)
 		this.player.body.setMaxVelocityY(250) 
 		this.player.body.setMaxVelocityX(150)
-		this.room2 = this.make.tilemap({key: 'screen2'})
-        const hitboxtileset = this.room2.addTilesetImage('hitbox', 'hitbox')
-        const spiketileset = this.room2.addTilesetImage('spike', 'spike')
-		const transitiontileset = this.room2.addTilesetImage('transition', 'transition')
-        const voidtileset = this.room2.addTilesetImage('void', 'void')
-        const blocktileset = this.room2.addTilesetImage('marble-packed-16x16', 'marble16x16')
-        const killTilesets = [spiketileset, voidtileset]
-        let hitboxLayer = this.room2.createLayer('Hitboxes', hitboxtileset, 1, 0).setVisible(false)
-		let platformLayer = this.room2.createLayer('Platforms', blocktileset, 0, 0)
-		let killLayer = this.room2.createLayer('Death', killTilesets, 0, 0)
-		let transitionLayer = this.room2.createLayer('Transition', transitiontileset,0,0)
-		let transitionRightlayer = this.room2.createLayer('TransitionRight', transitiontileset, 8, 0)
-        let downhitboxLayer = this.room2.createLayer('DownHitboxes', hitboxtileset, 1, 4).setVisible(false)
+        this.roomEnd = this.make.tilemap({key: 'roomEnd'})
+        const blocktileset = this.roomEnd.addTilesetImage('marble-packed-16x16', 'marble16x16')
+        let platformLayer = this.roomEnd.createLayer('Platforms', blocktileset, 0, 0)
         platformLayer.setCollisionByProperty({collides: true})
-		hitboxLayer.setCollisionByProperty({collides: true})
-		downhitboxLayer.setCollisionByProperty({collides: true})
-		transitionLayer.setCollisionByProperty({collides: true})
-		transitionRightlayer.setCollisionByProperty({collides: true})
-		this.physics.add.collider(this.player, transitionLayer, this.switchSceneBackward, null, this)
-		this.physics.add.collider(this.player, transitionRightlayer, this.switchSceneForward, null, this)
-        this.physics.add.collider(this.player, hitboxLayer, this.death, null, this)
-		this.physics.add.collider(this.player, downhitboxLayer, this.death2, null, this)
-		this.physics.add.collider(this.player, platformLayer)
-        this.physics.add.collider(this.player, platformLayer, this.resetDash, null, this)
-		this.physics.add.collider(this.player, platformLayer, this.climb, null, this)
-		if(!this.blockBroken2){
-			this.breakable2 = this.physics.add.staticSprite(584, 160, 'breakable2')
-		}
-		this.physics.add.collider(this.player, this.breakable2, this.breakBlock, null, this)
-		this.anims.create({
+        this.physics.add.collider(this.player, platformLayer)
+        this.anims.create({
 			key: "idle",
 			frames: this.anims.generateFrameNumbers("idle", {start: 0, end: 3}),
 			frameRate: 3,
@@ -200,34 +145,17 @@ export default class Screen2Scene extends Phaser.Scene {
 			frameRate: 1,
 			repeat: 0
 		})
-		this.anims.create({
-			key: "spin",
-			frames: this.anims.generateFrameNumbers("coin", {start: 0, end: 13}),
-			frameRate: 14,
-			repeat: 0
-		})
-		this.anims.create({
-			key: "spinGhost",
-			frames: this.anims.generateFrameNumbers("ghostCoin", {start: 0, end: 13}),
-			frameRate: 14,
-			repeat: 0
-		})
-		this.time.addEvent({
-			delay: 2000,
-			callback: this.animateCoin,
-			args: [this.coin],
-			callbackScope: this,
-			loop: true
-		})
-		this.physics.add.overlap(this.player, this.checkpoint21, this.checkpoint, null, this)
-		this.physics.add.overlap(this.player, this.checkpoint22, this.checkpoint2, null, this)
-		this.physics.add.overlap(this.player, this.coin, this.collectCoin, null, this)
+		this.winText = this.add.text(300, 150, 'You Won!', { fontSize: '60px', color: '#000000' })
+		this.coinText = this.add.text(345, 225, 'Coins', { fontSize: '60px', color: '#000000' })
+		this.coin2Text = this.add.text(230, 295, '', { fontSize: '60px', color: '#000000' })
+		this.deathText = this.add.text(275, 370, 'Deaths: ' + this.deathCount, { fontSize: '60px', color: '#000000' })
+		this.physics.add.overlap(this.player, this.start, this.switchScene, null, this)
         // this.physics.world.createDebugGraphic()
-        this.velocityText = this.add.text(10, 10, '', { fontSize: '16px', color: '#fff' })
     }
-    update() {
-		this.checkOneway(this.player, this.oneway)
-		if(this.cursor.down.isDown && !this.downPressed) {
+    update(){
+		this.coin2Text.setText('Collected: ' + this.collectedCoins)
+        this.checkOneway(this.player, this.oneway)
+        if(this.cursor.down.isDown && !this.downPressed) {
 			this.upPressed = false
 			this.downPressed = true
 		}
@@ -251,8 +179,7 @@ export default class Screen2Scene extends Phaser.Scene {
 		}
 		this.playerMovement()
 		this.walljump()
-		this.velocityText.setText(`Room ${this.room}`)
-		if(!this.z.isDown && !this.dashing && !this.dying){
+        if(!this.z.isDown && !this.dashing && !this.dying){
 			this.player.body.setAllowGravity(true)
 			this.player.body.setMaxVelocityX(150)
 			this.climbing = false
@@ -277,8 +204,7 @@ export default class Screen2Scene extends Phaser.Scene {
 			this.wasBlockedLeft = false
 			this.wasBlockedRight = false
 		}
-		if(this.dying) this.player.body.setAllowGravity(false)
-	}
+    }
     playerMovement() {
 		if(this.climbing || this.dashing || this.dying || this.slide) return
 		var standing = this.player.body.blocked.down
@@ -587,121 +513,7 @@ export default class Screen2Scene extends Phaser.Scene {
 			this.walljumping = false
 		}
 	}
-	death(player, hitboxLayer){
-		if(this.dying) return
-		this.dying = true
-		this.deathCount +=1
-		this.player.setAcceleration(0,0)
-		this.player.setVelocity(0, 0)
-		this.player.setDamping(true)
-		this.player.setDrag(0.8, 0.7)
-		this.player.body.setAllowGravity(false)
-		player.anims.play('death', true)
-			this.time.addEvent({
-				delay: 1100,
-				callback: () => {
-				player.setPosition(this.spawnpointX, this.spawnpointY)
-				player.setDamping(false)
-				player.setDrag(1, 1)
-				this.player.anims.play('respawn', true)
-				this.dashing = false
-				this.climbing = false
-				this.wasBlocked = false
-				this.wasBlockedLeft = false
-				this.wasBlockedRight = false
-				this.dashUsed = true
-				},
-				callbackScope: this
-			})
-			this.time.addEvent({
-				delay: 2100,
-				callback: () => {
-				player.body.setAllowGravity(true)
-				this.dying = false
-				},
-				callbackScope: this
-			})
-	}
-	death2(player, downhitboxLayer){
-		if(this.dying) return
-		this.dying = true
-		this.deathCount +=1
-		// console.log(this.dying)
-		this.player.setAcceleration(0,0)
-		this.player.setVelocity(0, 0)
-		this.player.setDamping(true)
-		this.player.setDrag(0.8, 0.7)
-		this.player.body.setAllowGravity(false)
-		// player.setActive(false)
-		// if(player.body.velocity.x > 0){
-		// 	player.setVelocity(-50, -50)
-		// 	console.log("left")
-		// }
-		player.anims.play('death', true)
-			this.time.addEvent({
-			delay: 1100,
-			callback: () => {
-				player.setPosition(this.spawnpointX, this.spawnpointY)
-				player.setDamping(false)
-				player.setDrag(1, 1)
-				this.player.anims.play('respawn', true)
-				this.dashing = false
-				this.climbing = false
-				this.wasBlocked = false
-				this.wasBlockedLeft = false
-				this.wasBlockedRight = false
-				this.dashUsed = true
-			},
-			callbackScope: this
-			})
-			this.time.addEvent({
-				delay: 2100,
-				callback: () => {
-					player.body.setAllowGravity(true)
-					this.dying = false
-				},
-				callbackScope: this
-			})
-	}
-	switchSceneForward(){
-		this.prevRoom = this.room
-		this.scene.start("screen3-scene", {
-			prevRoom: this.prevRoom,
-			collectedCoins: this.collectedCoins, 
-			blockBroken1: this.blockBroken1,
-			blockBroken2: this.blockBroken2,
-			blockBroken3: this.blockBroken3,
-			blockBroken4: this.blockBroken4,
-			blockBroken5: this.blockBroken5, 
-			collected1: this.collected1,
-			collected2: this.collected2,
-			collected3: this.collected3,
-			collected4: this.collected4,
-			collected5: this.collected5,
-			deathCount: this.deathCount
-		})
-		this.scene.sleep("screen2-scene")
-	}
-	switchSceneBackward(){
-		this.prevRoom = this.room
-		this.scene.start("Project-scene", {
-			prevRoom: this.prevRoom,
-			collectedCoins: this.collectedCoins, 
-			blockBroken1: this.blockBroken1,
-			blockBroken2: this.blockBroken2,
-			blockBroken3: this.blockBroken3,
-			blockBroken4: this.blockBroken4,
-			blockBroken5: this.blockBroken5, 
-			collected1: this.collected1,
-			collected2: this.collected2,
-			collected3: this.collected3,
-			collected4: this.collected4,
-			collected5: this.collected5,
-			deathCount: this.deathCount
-		})
-		this.scene.sleep("screen2-scene")
-	}
-	wasBlockedCheckerRight(){
+    wasBlockedCheckerRight(){
 		// console.log('check')
 		if(!this.cursor.right.isDown && !this.cursor.left.isDown){
 			// console.log('right')
@@ -726,40 +538,22 @@ export default class Screen2Scene extends Phaser.Scene {
 			this.oneway.body.checkCollision.none = true
 		}
 	}
-	breakBlock(){
-		if(this.player.body.touching.right && this.dashing && this.breakable2.body.touching.left){
-			this.blockBroken2 = true
-			console.log('break')
-			this.breakable2.destroy(true)
-			this.player.setVelocity(-75, -75)
-		}
-	}
-	collectCoin(player, coin){
-		console.log(this.collectedCoins)
-		if(this.collected2){
-			this.coin.destroy(true)
-		} else{
-		this.collectedCoins +=1
-		console.log(this.collectedCoins)
-		this.coin.destroy(true)
-		this.collected2 = true
-		}
-	}
-	animateCoin(coin){
-		if(coin && coin.active){
-			if(this.collected2){
-				coin.anims.play("spinGhost", true)
-			} else{
-			coin.anims.play("spin", true)
-			}
-		}
-	}
-	checkpoint(){
-		this.spawnpointX = 64
-		this.spawnpointY = 420
-	}
-	checkpoint2(){
-		this.spawnpointX = 744
-		this.spawnpointY = 324	
+	switchScene(){
+		console.log('switch')
+		this.scene.start("screenStart-scene",{
+			blockBroken1:false,
+			blockBroken2: false,
+			blockBroken3: false,
+			blockBroken4: false,
+			blockBroken5: false, 
+			collected1: false,
+			collected2: false,
+			collected3: false,
+			collected4: false,
+			collected5: false,
+			collectedCoins: 0,
+			deathCount: 0
+		})
+		this.scene.sleep("screenEnd-scene")
 	}
 }

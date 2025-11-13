@@ -7,6 +7,7 @@ export default class Screen4Scene extends Phaser.Scene {
         this.cursor = undefined
         this.room4 = undefined
         this.player = undefined
+		this.coin = undefined
         this.acceleration = 175
 		this.jumpVelocity = -200
 		this.jumping = false
@@ -20,7 +21,27 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.canClimb = false
         this.dying = false
 		this.room = 4
+		this.breakable4 = undefined
+		this.breakable41 = undefined
+		this.breakable42 = undefined
+		this.checkpoint41 = undefined
+		this.checkpoint42 = undefined
+		this.checkpoint43 = undefined
+		this.spawnpointX = undefined
+		this.spawnpointY = undefined
+		this.deathCount = data.deathCount || 0
 		this.prevRoom = data.prevRoom
+		this.collectedCoins = data.collectedCoins || 0
+		this.collected1 = data.collected1
+		this.collected2 = data.collected2
+		this.collected3 = data.collected3
+		this.collected4 = data.collected4
+		this.collected5 = data.collected5
+		this.blockBroken1 = data.blockBroken1
+		this.blockBroken2 = data.blockBroken2
+		this.blockBroken3 = data.blockBroken3
+		this.blockBroken4 = data.blockBroken4
+		this.blockBroken5 = data.blockBroken5
     }
     preload() {
         this.load.spritesheet('player', 'images/adventurer-sheet-new.png', {
@@ -63,6 +84,14 @@ export default class Screen4Scene extends Phaser.Scene {
 			frameWidth: 22,
 			frameHeight: 32
 		})
+		this.load.spritesheet("coin", "images/coin3_16x16.png", {
+			frameWidth: 16,
+			frameHeight: 16,
+		})
+		this.load.spritesheet("ghostCoin", "images/ghostCoin.png", {
+			frameWidth: 16,
+			frameHeight: 16,
+		})
     	this.load.tilemapTiledJSON('screen4','images/tilemap/newScreen4.tmj')
         this.load.image('hitbox', 'images/hitbox.png')
 		this.load.image("spike", "images/spike.png")
@@ -70,22 +99,43 @@ export default class Screen4Scene extends Phaser.Scene {
         this.load.image('transition', 'images/transition.png')
         this.load.image('crystal', 'images/dashCrystal.png')
         this.load.image('sidehitbox', 'images/sidehitbox.png')
+		this.load.image('breakable4', 'images/breakableBlock4.png')
+		this.load.image('breakable4.1', 'images/breakableBlock4.1.png')
+		this.load.image('breakable4.2', 'images/breakableBlock4.2.png')
+		this.load.image("background", "images/background.png")
     }
     create(){
+		this.add.image(400, 296, "background").setAlpha(0.2)
 		if(this.prevRoom > this.room){
-			this.player = this.physics.add.sprite(760, 452, "player").setScale(0.8)
+			this.player = this.physics.add.sprite(760, 484, "player").setScale(0.8)
 		} else {
-			this.player = this.physics.add.sprite(40, 40, "player").setScale(0.8)
+			this.player = this.physics.add.sprite(40, 68, "player").setScale(0.8)
 		}
+		this.checkpoint41 = this.add.rectangle(48, 48, 96, 64)
+		this.physics.add.existing(this.checkpoint41, true)
+		this.checkpoint42 = this.add.rectangle(264, 80, 16, 64)
+		this.physics.add.existing(this.checkpoint42, true)
+		this.checkpoint43 = this.add.rectangle(760, 440	, 80, 112)
+		this.physics.add.existing(this.checkpoint43, true)
+		if(this.collected4){
+			this.coin = this.physics.add.sprite(600, 208, 'ghostCoin')
+		} else {
+			this.coin = this.physics.add.sprite(600, 208, 'coin')
+		}
+		this.coin.body.setAllowGravity(false)
         this.spring = this.physics.add.sprite(168, 456, 'spring')
 		this.spring2 = this.physics.add.sprite(168, 200, 'spring')
 		this.spring3 = this.physics.add.sprite(424, 312, 'spring')
+		this.spring4 = this.physics.add.sprite(392, 120, 'spring')
+		this.spring5 = this.physics.add.sprite(472, 120, 'spring')
+		this.spring6 = this.physics.add.sprite(584, 120, 'spring')
+		this.spring7 = this.physics.add.sprite(584, 472, 'spring')
+		this.spring8 = this.physics.add.sprite(680, 232, 'spring')
+		this.spring9 = this.physics.add.sprite(392, 472, 'spring')
         this.dashCrystal = this.physics.add.sprite(295, 200, 'crystal')
 		this.dashCrystal2 = this.physics.add.sprite(295, 312, 'crystal')
 		this.dashCrystal3 = this.physics.add.sprite(295, 440, 'crystal')
-		this.dashCrystal4 = this.physics.add.sprite(391, 440, 'crystal')
 		this.dashCrystal5 = this.physics.add.sprite(487, 440, 'crystal')
-		this.dashCrystal6 = this.physics.add.sprite(583, 440, 'crystal')
 		this.dashCrystal7 = this.physics.add.sprite(679, 440, 'crystal')
         this.dashCrystal.body.setAllowGravity(false)
         this.dashCrystal.body.setMaxVelocity(0,0)
@@ -93,12 +143,8 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.dashCrystal2.body.setMaxVelocity(0,0)
 		this.dashCrystal3.body.setAllowGravity(false)
 		this.dashCrystal3.body.setMaxVelocity(0,0)
-		this.dashCrystal4.body.setAllowGravity(false)
-		this.dashCrystal4.body.setMaxVelocity(0,0)
 		this.dashCrystal5.body.setAllowGravity(false)
 		this.dashCrystal5.body.setMaxVelocity(0,0)
-		this.dashCrystal6.body.setAllowGravity(false)
-		this.dashCrystal6.body.setMaxVelocity(0,0)
 		this.dashCrystal7.body.setAllowGravity(false)
 		this.dashCrystal7.body.setMaxVelocity(0,0)
 		this.spring.body.setAllowGravity(false)
@@ -110,11 +156,29 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.spring3.body.setAllowGravity(false)
 		this.spring3.body.setSize(14, 8)
 		this.spring3.body.setOffset(1, 8)
+		this.spring4.body.setAllowGravity(false)
+		this.spring4.body.setSize(14, 8)
+		this.spring4.body.setOffset(1, 8)
+		this.spring5.body.setAllowGravity(false)
+		this.spring5.body.setSize(14, 8)
+		this.spring5.body.setOffset(1, 8)
+		this.spring6.body.setAllowGravity(false)
+		this.spring6.body.setSize(14, 8)
+		this.spring6.body.setOffset(1, 8)
+		this.spring7.body.setAllowGravity(false)
+		this.spring7.body.setSize(14, 8)
+		this.spring7.body.setOffset(1, 8)
+		this.spring8.body.setAllowGravity(false)
+		this.spring8.body.setSize(14, 8)
+		this.spring8.body.setOffset(1, 8)
+		this.spring9.body.setAllowGravity(false)
+		this.spring9.body.setSize(14, 8)
+		this.spring9.body.setOffset(1, 8)
         this.player.setCollideWorldBounds(true)
         this.cursor = this.input.keyboard.createCursorKeys()
 		this.x = this.input.keyboard.addKey('X')
 		this.z = this.input.keyboard.addKey('Z', true, false)
-		this.player.body.setMaxVelocityY(200) 
+		this.player.body.setMaxVelocityY(250) 
 		this.player.body.setMaxVelocityX(150)
 		this.room4 = this.make.tilemap({key: 'screen4'})
         const hitboxtileset = this.room4.addTilesetImage('hitbox', 'hitbox')
@@ -138,6 +202,13 @@ export default class Screen4Scene extends Phaser.Scene {
 		this.physics.add.collider(this.player, platformLayer)
         this.physics.add.collider(this.player, platformLayer, this.resetDash, null, this)
 		this.physics.add.collider(this.player, platformLayer, this.climb, null, this)
+		this.breakable42 = this.physics.add.staticSprite(520, 208, 'breakable4.2')
+		if(!this.blockBroken4){
+		this.breakable4 = this.physics.add.staticSprite(376, 80, 'breakable4')
+		this.breakable41 = this.physics.add.staticSprite(624, 132, 'breakable4.1')
+		}
+		this.physics.add.collider(this.player, this.breakable4, this.breakBlock, null, this)
+		this.physics.add.collider(this.player, this.breakable42, this.breakBlock2, null, this)
         this.anims.create({
 			key: "idle",
 			frames: this.anims.generateFrameNumbers("idle", {start: 0, end: 3}),
@@ -186,19 +257,46 @@ export default class Screen4Scene extends Phaser.Scene {
 			frameRate: 1,
 			repeat: 0
 		})
-        this.physics.world.createDebugGraphic()
+		this.anims.create({
+			key: "spin",
+			frames: this.anims.generateFrameNumbers("coin", {start: 0, end: 13}),
+			frameRate: 14,
+			repeat: 0
+		})
+		this.anims.create({
+			key: "spinGhost",
+			frames: this.anims.generateFrameNumbers("ghostCoin", {start: 0, end: 13}),
+			frameRate: 14,
+			repeat: 0
+		})
+		this.time.addEvent({
+			delay: 2000,
+			callback: this.animateCoin,
+			args: [this.coin],
+			callbackScope: this,
+			loop: true
+		})
+		this.physics.add.overlap(this.player, this.checkpoint41, this.checkpoint, null, this)
+		this.physics.add.overlap(this.player, this.checkpoint42, this.checkpoint2, null, this)
+		this.physics.add.overlap(this.player, this.checkpoint43, this.checkpoint3, null, this)
+		this.physics.add.overlap(this.player, this.coin, this.collectCoin, null, this)
+        // this.physics.world.createDebugGraphic()
         this.velocityText = this.add.text(10, 10, '', { fontSize: '16px', color: '#fff' })
 		this.physics.add.collider(this.player, transitionLayer, this.switchSceneBackward, null, this)
 		this.physics.add.collider(this.player, transitionRightLayer, this.switchSceneForward, null, this)
         this.physics.add.overlap(this.player, this.spring, this.bounce, null, this)
 		this.physics.add.overlap(this.player, this.spring2, this.bounce2, null, this)
 		this.physics.add.overlap(this.player, this.spring3, this.bounce3, null, this)
+		this.physics.add.overlap(this.player, this.spring4, this.bounce4, null, this)
+		this.physics.add.overlap(this.player, this.spring5, this.bounce5, null, this)
+		this.physics.add.overlap(this.player, this.spring6, this.bounce6, null, this)
+		this.physics.add.overlap(this.player, this.spring7, this.bounce7, null, this)
+		this.physics.add.overlap(this.player, this.spring8, this.bounce8, null, this)
+		this.physics.add.overlap(this.player, this.spring9, this.bounce9, null, this)
         this.physics.add.overlap(this.player, this.dashCrystal, this.restoreDash, null, this)
         this.physics.add.overlap(this.player, this.dashCrystal2, this.restoreDash2, null, this)
 	    this.physics.add.overlap(this.player, this.dashCrystal3, this.restoreDash3, null, this)
-		this.physics.add.overlap(this.player, this.dashCrystal4, this.restoreDash4, null, this)
 		this.physics.add.overlap(this.player, this.dashCrystal5, this.restoreDash5, null, this)
-		this.physics.add.overlap(this.player, this.dashCrystal6, this.restoreDash6, null, this)
 		this.physics.add.overlap(this.player, this.dashCrystal7, this.restoreDash7, null, this)
     }
     update(){
@@ -226,7 +324,7 @@ export default class Screen4Scene extends Phaser.Scene {
 		}
         this.playerMovement()
 		this.walljump()
-		this.velocityText.setText(`VelocityX: ${this.player.body.velocity.x.toFixed(2)}\nVelocityY: ${this.player.body.velocity.y.toFixed(2)}`)
+		this.velocityText.setText(`Room ${this.room}`)
 		if(!this.z.isDown && !this.dashing && !this.dying){
 			this.player.body.setAllowGravity(true)
 			this.player.body.setMaxVelocityX(150)
@@ -256,7 +354,7 @@ export default class Screen4Scene extends Phaser.Scene {
     }
     playerMovement() {
 		if(this.climbing || this.dashing || this.dying || this.slide) return
-		var standing = this.player.body.touching.down||this.player.body.blocked.down
+		var standing = this.player.body.blocked.down
 		var velocityY = this.player.body.velocity.y
 		var velocityX = this.player.body.velocity.x
 		var d = new Date()
@@ -358,6 +456,36 @@ export default class Screen4Scene extends Phaser.Scene {
 		player.setVelocityY(-this.acceleration*1.25)
 		this.dashUsed = false
 	}
+	bounce4(player,spring4){
+		spring4.anims.play('boing', true)
+		player.setVelocityY(-this.acceleration*1.25)
+		this.dashUsed = false
+	}
+	bounce5(player,spring5){
+		spring5.anims.play('boing', true)
+		player.setVelocityY(-this.acceleration*1.25)
+		this.dashUsed = false
+	}
+	bounce6(player,spring6){
+		spring6.anims.play('boing', true)
+		player.setVelocityY(-this.acceleration*1.25)
+		this.dashUsed = false
+	}
+	bounce7(player,spring7){
+		spring7.anims.play('boing', true)
+		player.setVelocityY(-this.acceleration*1.25)
+		this.dashUsed = false
+	}
+	bounce8(player,spring8){
+		spring8.anims.play('boing', true)
+		player.setVelocityY(-this.acceleration*1.25)
+		this.dashUsed = false
+	}
+	bounce9(player,spring9){
+		spring9.anims.play('boing', true)
+		player.setVelocityY(-this.acceleration*1.25)
+		this.dashUsed = false
+	}
     dash() {
 		if (this.dashing || this.dashUsed || this.dying) return
 		this.dashing = true
@@ -417,10 +545,14 @@ export default class Screen4Scene extends Phaser.Scene {
 		if(this.leftPressed) {
             dashX = -1
             dashY = 0
+			this.player.body.setMaxVelocityY(0)
+			this.player.body.setMaxVelocityX(300)
         }
 		if (this.rightPressed) {
             dashX = 1
             dashY = 0
+			this.player.body.setMaxVelocityY(0)
+			this.player.body.setMaxVelocityX(300)
         }
 		}
 		if (dashX !== 0 && dashY !== 0) {
@@ -447,7 +579,7 @@ export default class Screen4Scene extends Phaser.Scene {
 			callbackScope: this
 		})
 		this.time.addEvent({
-			delay:100,
+			delay:1,
 			callback: () => {
 				this.dashUsed = true
 			},
@@ -575,13 +707,7 @@ export default class Screen4Scene extends Phaser.Scene {
 	}
 	resetDash() {
 		if (this.player.body.blocked.down && this.dashUsed) {
-			this.time.addEvent({
-				delay: 100, 
-				callback: () => {
-					this.dashUsed = false
-				},
-				callbackScope: this
-			})
+			this.dashUsed = false
 		}
 	}
     climb(){
@@ -688,6 +814,7 @@ export default class Screen4Scene extends Phaser.Scene {
 	death(player, hitboxLayer){
 		if(this.dying) return
 		this.dying = true
+		this.deathCount += 1
 		this.player.setAcceleration(0,0)
 		this.player.setVelocity(0, 0)
 		this.player.setDamping(true)
@@ -699,11 +826,10 @@ export default class Screen4Scene extends Phaser.Scene {
 		// 	console.log("left")
 		// }
 		player.anims.play('death', true)
-		if(this.prevRoom > this.room){
 			this.time.addEvent({
 				delay: 1100,
 				callback: () => {
-					player.setPosition(760, 452)
+					player.setPosition(this.spawnpointX, this.spawnpointY)
 					player.setDamping(false)
 					player.setDrag(1, 1)
 					this.player.anims.play('respawn', true)
@@ -712,6 +838,7 @@ export default class Screen4Scene extends Phaser.Scene {
 				this.wasBlocked = false
 				this.wasBlockedLeft = false
 				this.wasBlockedRight = false
+				this.dashUsed = true
 				},
 				callbackScope: this
 			})
@@ -723,35 +850,11 @@ export default class Screen4Scene extends Phaser.Scene {
 				},
 				callbackScope: this
 			})
-		}else{
-		this.time.addEvent({
-			delay: 1100,
-			callback: () => {
-				player.setPosition(40, 56)
-				player.setDamping(false)
-				player.setDrag(1, 1)
-				this.player.anims.play('respawn', true)
-				this.dashing = false
-				this.climbing = false
-				this.wasBlocked = false
-				this.wasBlockedLeft = false
-				this.wasBlockedRight = false
-			},
-			callbackScope: this
-		})
-		this.time.addEvent({
-				delay: 2100,
-				callback: () => {
-				player.body.setAllowGravity(true)
-				this.dying = false
-				},
-				callbackScope: this
-			})
-	}
 	}
     death2(player, downhitboxLayer){
 		if(this.dying) return
 		this.dying = true
+		this.deathCount += 1
 		this.player.setAcceleration(0,0)
 		this.player.setVelocity(0, 0)
 		this.player.setDamping(true)
@@ -763,11 +866,10 @@ export default class Screen4Scene extends Phaser.Scene {
 		// 	console.log("left")
 		// }
 		player.anims.play('death', true)
-		if(this.prevRoom > this.room){
 			this.time.addEvent({
 				delay: 1100,
 				callback: () => {
-					player.setPosition(760, 452)
+					player.setPosition(this.spawnpointX, this.spawnpointY)
 					player.setDamping(false)
 					player.setDrag(1, 1)
 					this.player.anims.play('respawn', true)
@@ -776,6 +878,7 @@ export default class Screen4Scene extends Phaser.Scene {
 				this.wasBlocked = false
 				this.wasBlockedLeft = false
 				this.wasBlockedRight = false
+				this.dashUsed = true
 				},
 				callbackScope: this
 			})
@@ -787,40 +890,43 @@ export default class Screen4Scene extends Phaser.Scene {
 				},
 				callbackScope: this
 			})
-		}else{
-		this.time.addEvent({
-			delay: 1100,
-			callback: () => {
-				player.setPosition(40, 56)
-				player.setDamping(false)
-				player.setDrag(1, 1)
-				this.player.anims.play('respawn', true)
-				this.dashing = false
-				this.climbing = false
-				this.wasBlocked = false
-				this.wasBlockedLeft = false
-				this.wasBlockedRight = false
-			},
-			callbackScope: this
-		})
-		this.time.addEvent({
-				delay: 2100,
-				callback: () => {
-				player.body.setAllowGravity(true)
-				this.dying = false
-				},
-				callbackScope: this
-			})
-	}
 	}
 	switchSceneForward(){
 		this.prevRoom = this.room
-		this.scene.start("screen5-scene", {prevRoom: this.prevRoom})
+		this.scene.start("screen5-scene", {
+			prevRoom: this.prevRoom,
+			collectedCoins: this.collectedCoins, 
+			blockBroken1: this.blockBroken1,
+			blockBroken2: this.blockBroken2,
+			blockBroken3: this.blockBroken3,
+			blockBroken4: this.blockBroken4,
+			blockBroken5: this.blockBroken5, 
+			collected1: this.collected1,
+			collected2: this.collected2,
+			collected3: this.collected3,
+			collected4: this.collected4,
+			collected5: this.collected5,
+			deathCount: this.deathCount
+		})
 		this.scene.sleep("screen4-scene")
 	}
 	switchSceneBackward(){
 		this.prevRoom = this.room
-		this.scene.start("screen3-scene", {prevRoom: this.prevRoom})
+		this.scene.start("screen3-scene", {
+			prevRoom: this.prevRoom,
+			collectedCoins: this.collectedCoins, 
+			blockBroken1: this.blockBroken1,
+			blockBroken2: this.blockBroken2,
+			blockBroken3: this.blockBroken3,
+			blockBroken4: this.blockBroken4,
+			blockBroken5: this.blockBroken5, 
+			collected1: this.collected1,
+			collected2: this.collected2,
+			collected3: this.collected3,
+			collected4: this.collected4,
+			collected5: this.collected5,
+			deathCount: this.deathCount
+		})
 		this.scene.sleep("screen4-scene")
 	}
 	wasBlockedCheckerRight(){
@@ -838,5 +944,53 @@ export default class Screen4Scene extends Phaser.Scene {
 			this.wasBlockedLeft = true
 			this.wasBlocked = true
 		}
+	}
+	collectCoin(player, coin){
+		console.log(this.collectedCoins)
+		if(this.collected4){
+			this.coin.destroy(true)
+		} else{
+		console.log(this.collectedCoins)
+		this.collectedCoins +=1
+		this.coin.destroy(true)
+		this.collected4 = true
+		}
+	}
+	animateCoin(coin){
+		if(coin && coin.active){
+			if(this.collected4){
+				coin.anims.play("spinGhost", true)
+			} else{
+			coin.anims.play("spin", true)
+			}
+		}
+	}
+	breakBlock(){
+		if(this.player.body.touching.right && this.dashing && this.breakable4.body.touching.left){
+			this.blockBroken4 = true
+			console.log('break')
+			this.breakable4.destroy(true)
+			this.breakable41.destroy(true)
+			this.player.setVelocity(-75, -75)
+		}
+	}
+	breakBlock2(){
+		if(this.player.body.touching.left && this.dashing && this.breakable42.body.touching.right){
+			console.log('break')
+			this.breakable42.destroy(true)
+			this.player.setVelocity(75, -75)
+		}
+	}
+	checkpoint(){
+		this.spawnpointX = 40
+		this.spawnpointY = 68
+	}
+	checkpoint2(){
+		this.spawnpointX = 264
+		this.spawnpointY = 100
+	}
+	checkpoint3(){
+		this.spawnpointX = 760
+		this.spawnpointY = 484
 	}
 }
